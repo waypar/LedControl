@@ -25,6 +25,7 @@
  */
 
 
+#include <SPI.h>
 #include "LedControl.h"
 
 //the opcodes for the MAX7221 and MAX7219
@@ -43,18 +44,14 @@
 #define OP_SHUTDOWN    12
 #define OP_DISPLAYTEST 15
 
-LedControl::LedControl(int dataPin, int clkPin, int csPin, int numDevices) {
-    SPI_MOSI=dataPin;
-    SPI_CLK=clkPin;
+LedControl::LedControl(int csPin, int numDevices) {
     SPI_CS=csPin;
     if(numDevices<=0 || numDevices>8 )
         numDevices=8;
     maxDevices=numDevices;
-    pinMode(SPI_MOSI,OUTPUT);
-    pinMode(SPI_CLK,OUTPUT);
     pinMode(SPI_CS,OUTPUT);
     digitalWrite(SPI_CS,HIGH);
-    SPI_MOSI=dataPin;
+    SPI.begin();
     for(int i=0;i<64;i++) 
         status[i]=0x00;
     for(int i=0;i<maxDevices;i++) {
@@ -200,12 +197,15 @@ void LedControl::spiTransfer(int addr, volatile byte opcode, volatile byte data)
     spidata[offset+1]=opcode;
     spidata[offset]=data;
     //enable the line 
+	SPI.beginTransaction(SPISettings(SPI_CLOCK_DIV4, MSBFIRST, SPI_MODE0));	// Set the settings to work with SPI bus
     digitalWrite(SPI_CS,LOW);
     //Now shift out the data 
     for(int i=maxbytes;i>0;i--)
-        shiftOut(SPI_MOSI,SPI_CLK,MSBFIRST,spidata[i-1]);
+        SPI.transfer(spidata[i-1]);
     //latch the data onto the display
     digitalWrite(SPI_CS,HIGH);
+	SPI.endTransaction(); // Stop using the SPI bus
+
 }    
 
 
